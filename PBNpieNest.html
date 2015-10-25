@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+    <title>PBN History Pie Chart</title>
+    <script type="text/javascript" src="http://d3js.org/d3.v3.js"></script>
+    <style type="text/css">
+      
+      body {
+        background-color: white;
+        font-family: Helvetica, Arial, sans-serif;
+      }
+
+      h1 {
+        font-size: 24px;
+        margin: 0;
+      }
+
+      p {
+        font-size: 14px;
+        margin: 10px 0 0 0;
+      }
+
+      svg {
+        background-color: white;
+      }
+
+  
+  #chart {
+  height: 560px;
+  width: 560px;
+  margin: 0 auto;
+  position: relative;
+}
+
+p {
+  font-size: 12px;
+  text-align: center;
+  color: black;
+}
+
+rect {
+  cursor: pointer;
+  stroke-width: 2;
+}
+
+    </style>
+  </head>
+  <body>
+      <h1>Four Years of PBN</h1>
+        <p></p>
+    <div class="chart"></div>
+    <script type="text/javascript">
+var width = 700;
+var height = 500;
+var radius = Math.min(width, height) / 2; 
+var donutWidth = 65;
+
+var color = d3.scale.category20();      
+
+//Create SVG element
+var svg = d3.select(".chart")
+  .append("svg")
+  .attr("width", width)
+  .attr("height", height)
+  .append("g")
+  .attr("transform", "translate(" + (height / 2) +  "," + (height / 2) + ")");
+
+//define pie elements
+var arc = d3.svg.arc()
+  .innerRadius(radius - donutWidth)
+  .outerRadius(radius);
+
+var pie = d3.layout.pie()
+  .value(function(d) { return d.values; })
+  .sort(null);
+
+//create generic sum function in Array prototype
+Array.prototype.sum = function (prop) {
+    var total = 0
+    for ( var i = 0, _len = this.length; i < _len; i++ ) {
+        total += this[i][prop]
+    }
+    return total
+};
+
+//Load data consisting of list of names of teachers
+d3.csv("PBNrawnames.csv", function(dataset) {
+
+//group data into number of classes for each teacher
+var classesCount = d3.nest()
+  .key(function(d) { return d.Name; })
+  .rollup(function(v) { return v.length; })
+  .entries(dataset);
+
+var threshhold = Math.round(classesCount.sum("values")/300); //Threshhold for miscellaneous
+console.log(threshhold);
+
+//Filter out teachers with 4 classes or less into a 'miscellaneous' category
+var bigCount = classesCount.filter(function(d) {
+  return d.values > threshhold;
+});
+
+var miscCount = classesCount.filter(function(d) {
+  return d.values <= threshhold;
+});
+
+//sort values in descending order
+bigCount.sort(function(a,b) {
+  return b.values - a.values;
+});
+
+//append miscellaneous data at the end
+bigCount.push({"key":"Misc", "values":(miscCount.sum("values"))});
+
+//Draw pie chart
+var path = svg.selectAll("path")
+  .data(pie(bigCount))
+  .enter()
+  .append("path")
+  .attr("d", arc)
+  .attr("fill", function(d, i) { 
+    return color(d.data.key);
+  })
+  .each(function(d) { this._current = d; });
+
+//put PB logo in center of pie chart
+var logo = svg.append("circle")
+  .attr("cx", 0)
+  .attr("cy", 0)
+  .attr("r", 165)
+  .attr("fill", "white")
+  .attr("stroke", "red")
+  .attr("stroke-width", 18);
+
+svg.append("text")
+  .attr("x", -70)
+  .attr("y", 50)
+  .attr("font-size", "256px")
+  .attr("font-family", "sans-serif")
+  .attr("fill","red")
+  .text("p");
+
+//Add text with total # of classes
+svg.append("text")
+  .attr("x", 170)
+  .attr("y", 250)
+  .attr("font-size", "24px")
+  .attr("font-family", "sans-serif")
+  .attr("fill","black")
+  .attr("style", "bold")
+  .text(classesCount.sum("values") + " Classes");
+
+//Create Legend
+var legendRectSize = 18;
+var legendSpacing = 4;
+
+var legend = svg.selectAll(".legend")
+  .data(bigCount)
+  .enter()
+  .append("g")
+  .attr("class", "legend")
+  .attr("font-size", "10px")
+  .attr("transform", function(d, i) {
+    var height = legendRectSize + legendSpacing;
+    var offset =  height * color.domain().length / 2;
+    var horz = 300 - (2 * legendRectSize);
+    var vert = i * height - offset;
+    return "translate(" + horz + "," + vert + ")";
+  });
+
+legend.append("rect")
+        .attr("width", legendRectSize)
+        .attr("height", legendRectSize)
+        .style("fill", function(d, i) { 
+    return color(d.key);})
+        .style("stroke", function(d, i) { 
+    return color(d.key);})
+        .style("stroke-width", "2");
+
+legend.append("text")
+      .attr("x", legendRectSize + legendSpacing)
+      .attr("y", legendRectSize - legendSpacing)
+      .text(function(d) {return (d.key + ", " + d.values);});
+
+});
+
+    </script>
+  </body>
+</html>
+
