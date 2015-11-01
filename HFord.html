@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Harrison Ford Box Office</title>
+		<script type="text/javascript" src="http://d3js.org/d3.v3.js"></script>
+		<style type="text/css">
+			
+			body {
+				margin: 0;
+				background-color: lightGray;
+				font-family: Helvetica, Arial, sans-serif;
+			}
+
+			#container {
+				width: 700px;
+				margin-left: auto;
+				margin-right: auto;
+				margin-top: 50px;
+				padding: 50px;
+				background-color: white;
+				box-shadow: 3px 3px 5px 6px #ccc;
+			}
+			/* Make a very pretty button */
+			#option {
+				-moz-box-shadow: 0px 10px 14px -7px #276873;
+				-webkit-box-shadow: 0px 10px 14px -7px #276873;
+				box-shadow: 0px 10px 14px -7px #276873;
+				background:-webkit-gradient(linear, left top, left bottom, color-stop(0.05, #599bb3), color-stop(1, #408c99));
+				background:-moz-linear-gradient(top, #599bb3 5%, #408c99 100%);
+				background:-webkit-linear-gradient(top, #599bb3 5%, #408c99 100%);
+				background:-o-linear-gradient(top, #599bb3 5%, #408c99 100%);
+				background:-ms-linear-gradient(top, #599bb3 5%, #408c99 100%);
+				background:linear-gradient(to bottom, #599bb3 5%, #408c99 100%);
+				filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#599bb3', endColorstr='#408c99',GradientType=0);
+				background-color:#599bb3;
+				-moz-border-radius:8px;
+				-webkit-border-radius:8px;
+				border-radius:8px;
+				display:inline-block;
+				cursor:pointer;
+				color:#ffffff;
+				font-family:Arial;
+				font-size:20px;
+				font-weight:bold;
+				padding:13px 32px;
+				text-decoration:none;
+				text-shadow:0px 1px 0px #3d768a;
+			}
+
+			#option:hover {
+				background:-webkit-gradient(linear, left top, left bottom, color-stop(0.05, #408c99), color-stop(1, #599bb3));
+				background:-moz-linear-gradient(top, #408c99 5%, #599bb3 100%);
+				background:-webkit-linear-gradient(top, #408c99 5%, #599bb3 100%);
+				background:-o-linear-gradient(top, #408c99 5%, #599bb3 100%);
+				background:-ms-linear-gradient(top, #408c99 5%, #599bb3 100%);
+				background:linear-gradient(to bottom, #408c99 5%, #599bb3 100%);
+				filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#408c99', endColorstr='#599bb3',GradientType=0);
+				background-color:#408c99;
+			}
+
+			#option:active {
+				position:relative;
+				top:1px;
+			}
+
+			h1 {
+				font-size: 24px;
+				margin: 0;
+			}
+
+			p {
+				font-size: 14px;
+				margin: 15px 0 10px 0;
+			}
+
+			a:link {
+				text-decoration: none;
+				color: gray;
+			}
+			
+			a:hover {
+				text-decoration: underline;
+			}
+
+			a:visited {
+				color: gray;
+			}
+
+			a:active {
+				color: steelBlue;
+			}
+			svg {
+				background-color: white;
+			}
+
+			rect:hover {
+				fill: orange;
+			}
+			
+			g.bar text {
+				font-size: 9px;
+				font-weight: bold;
+				text-anchor: start;
+				opacity: 0;
+			}
+
+			g.bar:hover rect {
+				fill: orange;
+				pointer-events: none;
+			}
+
+			g.bar:hover text {
+				opacity: 1;
+			}
+
+			.axis path,
+			.axis line {
+				fill: none;
+				stroke: black;
+				shape-rendering: crispEdges;
+			}
+			
+			.axis text {
+				font-family: sans-serif;
+				font-size: 9px;
+			}
+
+			.y.axis path,
+			.y.axis line {
+				opacity: 0;
+			}
+
+		</style>
+	</head>
+	<body>
+
+		<div id="container">
+			<h1>Harrison Ford at the Box Office</h1>
+			<p>In anticipation of the forthcoming release of <cite>Star Wars: The Force Awakens</cite>, we're taking a look at Harrison Ford's success at the box office over the years.</p>
+			<p>Source: <a href="http://www.boxofficemojo.com/people/chart/?view=Actor&id=harrisonford.htm">Box Office Mojo</a>.</p>
+
+		<div id="option" onclick="updateData()"> 
+			<p>Change to Non-Adjusted Dollars</p>
+   		</div>
+
+		</div>
+
+		<script type="text/javascript">		
+
+			var w = 700;
+			var h = 700;
+			var margin = {top: 10, right: 10, bottom: 30, left: 175},
+    			width = w - margin.left - margin.right,
+    			height = h - margin.top - margin.bottom;
+
+			var widthScale = d3.scale.linear()
+								.range([ 0, width ]);
+			
+			var heightScale = d3.scale.ordinal()
+								.rangeRoundBands([ margin.top, h - margin.bottom ], 0.1);
+
+			var formatAsDollars = d3.format("$s");
+
+			var xAxis = d3.svg.axis()
+							.scale(widthScale)
+							.orient("bottom")
+							.tickFormat(formatAsDollars);
+
+			var yAxis = d3.svg.axis()
+							.scale(heightScale)
+							.orient("left");
+
+			var svg = d3.select("#container")
+						.append("svg")
+						.attr("width", w)
+						.attr("height", h);
+
+			//Read in data and sort descending
+			d3.csv("Harrison Ford.csv", function(data) {
+
+				data.sort(function(a, b) {
+					return d3.descending(+a.AdjGross, +b.AdjGross);
+				});
+
+				widthScale.domain([ 0, d3.max(data, function(d) {
+					return +d.AdjGross;
+				}) ]);
+
+				heightScale.domain(data.map(function(d) { return d.Title; } ));
+
+
+				//bind data to group of class "bar"
+				var groups = svg.selectAll("g")
+								.data(data)
+								.enter()
+								.append("g")
+								.attr("class", "bar");
+
+				
+				//Add rect to each "bar" group
+				var rects = groups.append("rect")
+					.attr("x", margin.left)
+					.attr("y", function(d) {
+						return heightScale(d.Title);
+					})
+					.attr("width", 0)
+					.attr("height", heightScale.rangeBand())
+					.attr("fill", "teal");
+
+				//add text element to each "bar" group
+				groups.append("text")
+					.attr("x", margin.left + 3)
+					.attr("y", function(d) {
+						return heightScale(d.Title) + 10;
+					})
+					.text(function(d) {
+						return d3.format("$,")(d.AdjGross);
+					});
+
+				rects.transition()
+					.delay(function(d, i) {
+						return i * 50;
+					})
+					.duration(1000)
+					.attr("width", function(d) {
+						return widthScale(d.AdjGross);
+					});
+
+				//Add axes
+				svg.append("g")
+					.attr("class", "x axis")
+					.attr("transform", "translate(" + margin.left + "," + (h - margin.bottom) + ")")
+					.call(xAxis);
+
+				svg.append("g")
+					.attr("class", "y axis")
+					.attr("transform", "translate(" + margin.left + ",0)")
+					.call(yAxis);
+
+				//Add explanation
+				svg.append("text")
+					.attr("x", margin.left + 200)
+					.attr("y", margin.top + 200)
+					.attr("id", "explainer")
+					.text("(Dollar amounts adjusted for inflation)");
+
+			});		
+
+			// ** Update data section (Called from the onclick)
+			function updateData() {
+
+				//Load data and sort again and scale by alternate column
+				d3.csv("Harrison Ford.csv", function(data) {
+    	
+    			data.sort(function(a, b) {
+					return d3.descending(+a.Gross, +b.Gross);
+				});
+
+				widthScale.domain([ 0, d3.max(data, function(d) {
+					return +d.Gross;
+				}) ]);	
+
+				heightScale.domain(data.map(function(d) { return d.Title; } ));
+
+    		// Select the sections to be updated
+				var svg = d3.select("#container");
+
+				var groups = svg.selectAll(".bar");
+							
+				var rects = groups.selectAll("rect")
+					.attr("x", margin.left)
+					.attr("y", function(d) {
+						return heightScale(d.Title);
+					})
+					.attr("width", 0)
+					.attr("height", heightScale.rangeBand())
+					.attr("fill", "steelBlue");
+
+				//add text element to each "bar" group
+				groups.select("text")
+					.attr("x", margin.left + 3)
+					.attr("y", function(d) {
+						return heightScale(d.Title) + 10;
+					})
+					.text(function(d) {
+						return d3.format("$,")(d.Gross);
+					});
+
+				rects.transition()
+					.delay(function(d, i) {
+						return i * 50;
+					})
+					.duration(1000)
+					.attr("width", function(d) {
+						return widthScale(d.Gross);
+					});
+
+				svg.select(".x.axis")
+					.attr("transform", "translate(" + margin.left + "," + (h - margin.bottom) + ")")
+					.call(xAxis);
+
+				svg.select(".y.axis")
+					.attr("transform", "translate(" + margin.left + ",0)")
+					.call(yAxis);
+
+				svg.select("#explainer")
+					.text("(Dollar amounts not adjusted for inflation)");
+
+			});
+			};
+
+
+		</script>
+
+	</body>
+</html>
